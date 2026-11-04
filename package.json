@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node hunter.js"
   },
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
     "@whiskeysockets/baileys": "^6.5.0",
