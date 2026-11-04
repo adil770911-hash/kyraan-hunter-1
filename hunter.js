@@ -1,3 +1,4 @@
+hereimport { createClient } from '@supabase/supabase-js';
 import makeWASocket, { useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys';
 import pino from 'pino';
 import express from 'express';
