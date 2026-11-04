@@ -1,5 +1,4 @@
-{
-  "name": "kyraan-hunter",
+{"name": "kyraan-hunter",
   "version": "1.0.0",
   "type": "module",
   "main": "hunter.js",
