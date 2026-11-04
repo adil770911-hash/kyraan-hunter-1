@@ -6,104 +6,7 @@ import express from 'express';
 // --- КОНФИГУРАЦИЯ ---
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY; 
-const ADMIN_WA_NUMBER = process.env.ADMIN_WA_NUMBER; // Формат: 996700123456 (без +)
-
-if (!SUPABASE_URL || !SUPABASE_KEY || !ADMIN_WA_NUMBER) {
-  console.error("❌ ОШИБКА: Не заданы переменные окружения (SUPABASE_URL, SUPABASE_SERVICE_KEY, ADMIN_WA_NUMBER)");
-  process.exit(1);
-st supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// Маппинг групп (заполним после первого запуска)
-const GROUPS = {
-  cargo: '',
-  evacuator: '',
-  manipulator: '',
-  plumber: '',
-  cleaning: '',
-  welder: '',
-  electrician: '',
-  fridge: '',
-  washer: '',
-  tv: '',
-  hour: ''
-};
-
-// --- ВЕБ-СЕРВЕР ДЛЯ RENDER (Health Check) ---
-const app = express();
-const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('🦅 Hunter is running!'));
-app.listen(PORT, () => console.log(`🌐 Веб-сервер запущен на порту ${PORT}`));
-
-// --- ИНИЦИАЛИЗАЦИЯ WHATSAPP (Baileys) ---
-let sock;
-async function connectToWhatsApp() {
-  const { state, saveCreds } = await useMultiFileAuthState('auth_info');
-  sock = makeWASocket({
-    auth: state,
-    printQRInTerminal: true, // Выведет QR в логи Render
-    logger: pino({ level: 'silent' })
-  });
-
-  sock.ev.on('creds.update', saveCreds);
-  
-  sock.ev.on('connection.update', async (update) => {
-    const { connection, lastDisconnect } = update;
-    
-    if (connection === 'close') {
-      const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
-      if (shouldReconnect) {
-        console.log('🔄 Переподключение...');
-        connectToWhatsApp();
-      }
-    } else if (connection === 'open') {
-      console.log('✅ WhatsApp подключен!');
-      
-      // ВЫВОД ВСЕХ ГРУПП В КОНСОЛЬ (чтобы взять их ID)
-      const groups = await sock.groupFetchAllParticipating();
-      console.log("📋 СПИСОК ВАШИХ ГРУПП (Скопируйте ID в код):");
-      Object.values(groups).forEach(g => {
-         console.log(`Группа: "${g.subject}" | JID: ${g.id}`);
-      });
-    }
-  });
-
-  sock.ev.on('messages.upsert', async m => {
-    const msg = m.messages[0];
-    if (!msg.message || msg.key.fromMe) return;
-
-    const text = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
-    const senderJid = msg.key.remoteJid;
-    const senderPhone = senderJid.split('@')[0]; 
-
-    // ОБРАБОТКА "БЕРУ"
-    if (senderJid.endsWith('@g.us') && text.toLowerCase().includes('беру')) {
-      await handleTakeOrder(senderJid, senderPhone);
-    }
-
-    // ОБРАБОТКА "ДА" ОТ АДМИНА
-    if (senderJid === `${ADMIN_WA_NUMBER}@s.whatsapp.net` && text.toLowerCase() === 'да') {
-      await publishPendingOrders();
-    }
-  });
-}
-
-// --- ЛОГИКА ХИЩНИКА ---
-async function processContour(contourName) {
-  try {
-    const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
-
-    const { data: orders } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('hunter', contourName)
-      .eq('status', 'NEW')
-      .is('assigned_executor_id', null)
-      .lt('created_at', oneMinuteAgo);
-
-    if (!orders || orders.length === 0) return;
-
-    for (const order of orders) {
-    import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import makeWASocket, { useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys';
 import pino from 'pino';
 import express from 'express';
@@ -111,7 +14,7 @@ import express from 'express';
 // --- КОНФИГУРАЦИЯ ---
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY; 
-const ADMIN_WA_NUMBER = process.env.ADMIN_WA_NUMBER; // Формат: 996700123456 (без +)
+const ADMIN_WA_NUMBER = process.env.ADMIN_WA_NUMBER; 
 
 if (!SUPABASE_URL || !SUPABASE_KEY || !ADMIN_WA_NUMBER) {
   console.error("❌ ОШИБКА: Не заданы переменные окружения (SUPABASE_URL, SUPABASE_SERVICE_KEY, ADMIN_WA_NUMBER)");
@@ -120,7 +23,6 @@ if (!SUPABASE_URL || !SUPABASE_KEY || !ADMIN_WA_NUMBER) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Маппинг групп (заполним после первого запуска)
 const GROUPS = {
   cargo: '',
   evacuator: '',
@@ -135,19 +37,19 @@ const GROUPS = {
   hour: ''
 };
 
-// --- ВЕБ-СЕРВЕР ДЛЯ RENDER (Health Check) ---
+// --- ВЕБ-СЕРВЕР ДЛЯ RENDER ---
 const app = express();
 const PORT = process.env.PORT || 10000;
 app.get('/', (req, res) => res.send('🦅 Hunter is running!'));
 app.listen(PORT, () => console.log(`🌐 Веб-сервер запущен на порту ${PORT}`));
 
-// --- ИНИЦИАЛИЗАЦИЯ WHATSAPP (Baileys) ---
+// --- ИНИЦИАЛИЗАЦИЯ WHATSAPP ---
 let sock;
 async function connectToWhatsApp() {
   const { state, saveCreds } = await useMultiFileAuthState('auth_info');
   sock = makeWASocket({
     auth: state,
-    printQRInTerminal: true, // Выведет QR в логи Render
+    printQRInTerminal: true,
     logger: pino({ level: 'silent' })
   });
 
@@ -164,8 +66,6 @@ async function connectToWhatsApp() {
       }
     } else if (connection === 'open') {
       console.log('✅ WhatsApp подключен!');
-      
-      // ВЫВОД ВСЕХ ГРУПП В КОНСОЛЬ (чтобы взять их ID)
       const groups = await sock.groupFetchAllParticipating();
       console.log("📋 СПИСОК ВАШИХ ГРУПП (Скопируйте ID в код):");
       Object.values(groups).forEach(g => {
@@ -182,12 +82,10 @@ async function connectToWhatsApp() {
     const senderJid = msg.key.remoteJid;
     const senderPhone = senderJid.split('@')[0]; 
 
-    // ОБРАБОТКА "БЕРУ"
     if (senderJid.endsWith('@g.us') && text.toLowerCase().includes('беру')) {
       await handleTakeOrder(senderJid, senderPhone);
     }
 
-    // ОБРАБОТКА "ДА" ОТ АДМИНА
     if (senderJid === `${ADMIN_WA_NUMBER}@s.whatsapp.net` && text.toLowerCase() === 'да') {
       await publishPendingOrders();
     }
@@ -334,7 +232,101 @@ async function start() {
   setInterval(() => processContour('HUNTER_02'), 15000);
 }
 
-start();￼Enter  const { data: logs } = await supabase
+start();￼EnterADMIN_WA_NUMBER = process.env.ADMIN_WA_NUMBER; 
+
+if (!SUPABASE_URL || !SUPABASE_KEY || !ADMIN_WA_NUMBER) {
+  console.error("❌ ОШИБКА: Не заданы переменные окружения (SUPABASE_URL, SUPABASE_SERVICE_KEY, ADMIN_WA_NUMBER)");
+  process.exit(1);
+}
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const GROUPS = {
+  cargo: '',
+  evacuator: '',
+  manipulator: '',
+  plumber: '',
+  cleaning: '',
+  welder: '',
+  electrician: '',
+  fridge: '',
+  washer: '',
+  tv: '',
+  hour: ''
+};
+
+// --- ВЕБ-СЕРВЕР ДЛЯ RENDER ---
+const app = express();
+const PORT = process.env.PORT || 10000;
+app.get('/', (req, res) => res.send('🦅 Hunter is running!'));
+app.listen(PORT, () => console.log(`🌐 Веб-сервер запущен на порту ${PORT}`));
+
+// --- ИНИЦИАЛИЗАЦИЯ WHATSAPP ---
+let sock;
+async function connectToWhatsApp() {
+  const { state, saveCreds } = await useMultiFileAuthState('auth_info');
+  sock = makeWASocket({
+    auth: state,
+    printQRInTerminal: true,
+    logger: pino({ level: 'silent' })
+  });
+
+  sock.ev.on('creds.update', saveCreds);
+  
+  sock.ev.on('connection.update', async (update) => {
+    const { connection, lastDisconnect } = update;
+    
+    if (connection === 'close') {
+      const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
+      if (shouldReconnect) {
+        console.log('🔄 Переподключение...');
+        connectToWhatsApp();
+      }
+    } else if (connection === 'open') {
+      console.log('✅ WhatsApp подключен!');
+      const groups = await sock.groupFetchAllParticipating();
+      console.log("📋 СПИСОК ВАШИХ ГРУПП (Скопируйте ID в код):");
+      Object.values(groups).forEach(g => {
+         console.log(`Группа: "${g.subject}" | JID: ${g.id}`);
+      });
+    }
+  });
+
+  sock.ev.on('messages.upsert', async m => {
+    const msg = m.messages[0];
+    if (!msg.message || msg.key.fromMe) return;
+
+    const text = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
+    const senderJid = msg.key.remoteJid;
+    const senderPhone = senderJid.split('@')[0]; 
+
+    if (senderJid.endsWith('@g.us') && text.toLowerCase().includes('беру')) {
+      await handleTakeOrder(senderJid, senderPhone);
+    }
+
+    if (senderJid === `${ADMIN_WA_NUMBER}@s.whatsapp.net` && text.toLowerCase() === 'да') {
+      await publishPendingOrders();
+    }
+  });
+}
+
+// --- ЛОГИКА ХИЩНИКА ---
+async function processContour(contourName) {
+  try {
+    const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('hunter', contourName)
+      .eq('status', 'NEW')
+      .is('assigned_executor_id', null)
+      .lt('created_at', oneMinuteAgo);
+
+    if (!orders || orders.length === 0) return;
+
+    for (const order of orders) {
+      const { data: logs } = await supabase
         .from('audit_log')
         .select('id')
         .eq('order_id', order.id)
