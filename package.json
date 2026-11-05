@@ -1,4 +1,5 @@
-{"name": "kyraan-hunter",
+{
+  "name": "kyraan-hunter",
   "version": "1.0.0",
   "type": "module",
   "main": "hunter.js",
@@ -6,7 +7,7 @@
     "start": "node hunter.js"
   },
   "engines": {
-    "node": "20.x"
+    "node": "22.x"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
